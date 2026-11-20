@@ -2,10 +2,14 @@ FROM ghcr.io/cirruslabs/android-sdk:36
 
 ENV GRADLE_USER_HOME=/root/.gradle
 
-WORKDIR /warmup
+RUN apt-get update && apt-get install -y --no-install-recommends curl unzip && rm -rf /var/lib/apt/lists/*
+
 RUN curl -fsSL https://services.gradle.org/distributions/gradle-8.11.1-bin.zip -o /tmp/gradle.zip && \
     unzip -q /tmp/gradle.zip -d /opt && \
-    rm /tmp/gradle.zip && \
+    rm /tmp/gradle.zip
+
+WORKDIR /warmup
+RUN printf 'android.useAndroidX=true\norg.gradle.jvmargs=-Xmx3g\n' > gradle.properties && \
     printf 'plugins {\n  id("com.android.application") version "8.9.1" apply false\n  id("org.jetbrains.kotlin.android") version "2.1.10" apply false\n  id("org.jetbrains.kotlin.plugin.compose") version "2.1.10" apply false\n}\n' > build.gradle.kts && \
     printf 'pluginManagement {\n  repositories { google(); mavenCentral(); gradlePluginPortal() }\n}\ndependencyResolutionManagement {\n  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n  repositories { google(); mavenCentral() }\n}\ninclude(":app")\n' > settings.gradle.kts && \
     mkdir -p app/src/main && \
