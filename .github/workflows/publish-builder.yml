@@ -1,0 +1,29 @@
+name: Publish ShipSign Builder Image
+on:
+  push:
+    branches: [main]
+    paths: ['Dockerfile', '.github/workflows/publish-builder.yml']
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Pre-Warmed Image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/zaibixrumi1/shipsign-builder:latest
