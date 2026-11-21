@@ -1,29 +1,42 @@
-name: Publish ShipSign Builder Image
+name: Publish ShipSign Modular Builder Images
 on:
   push:
     branches: [main]
-    paths: ['Dockerfile', '.github/workflows/publish-builder.yml']
   workflow_dispatch:
 
 jobs:
-  build-and-push:
+  publish-images:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tag: latest
+            dockerfile: Dockerfile
+          - tag: android
+            dockerfile: Dockerfile.android
+          - tag: flutter
+            dockerfile: Dockerfile.flutter
+          - tag: web
+            dockerfile: Dockerfile.web
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout Repository
+        uses: actions/checkout@v6
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Pre-Warmed Image
-        uses: docker/build-push-action@v7
+      - name: Build and Push ${{ matrix.tag }} Image
+        uses: docker/build-push-action@v6
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           push: true
-          tags: ghcr.io/zaibixrumi1/shipsign-builder:latest
+          tags: ghcr.io/zaibixrumi1/shipsign-builder:${{ matrix.tag }}
