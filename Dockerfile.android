@@ -55,7 +55,7 @@ RUN mkdir -p /tmp/warmup && \
 # plugins such projects commonly apply (spotless, versions, catalog
 # update) and seeds the Gradle 9.6.0 wrapper distribution.
 # ---------------------------------------------------------------------------
-RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app && \
+RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app /tmp/warmup2/app/src/main/res/values /tmp/warmup2/app/src/main/res/drawable /tmp/warmup2/app/src/main/res/mipmap-anydpi-v26 && \
     printf '%s\n' \
       'pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }' \
       'dependencyResolutionManagement { repositories { google(); mavenCentral() } }' \
@@ -127,7 +127,7 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app && \
       > /tmp/warmup2/app/build.gradle && \
     printf '%s\n' \
       '<manifest xmlns:android="http://schemas.android.com/apk/res/android">' \
-      '  <application android:label="warmup">' \
+      '  <application android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:theme="@style/Theme.Warmup">' \
       '    <activity android:name=".MainActivity" android:exported="true">' \
       '      <intent-filter>' \
       '        <action android:name="android.intent.action.MAIN" />' \
@@ -137,6 +137,24 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app && \
       '  </application>' \
       '</manifest>' \
       > /tmp/warmup2/app/src/main/AndroidManifest.xml && \
+    printf '%s\n' \
+      '<resources>' \
+      '  <string name="app_name">warmup</string>' \
+      '  <color name="ic_background">#FF00696D</color>' \
+      '  <style name="Theme.Warmup" parent="android:Theme.Material.NoActionBar" />' \
+      '</resources>' \
+      > /tmp/warmup2/app/src/main/res/values/values.xml && \
+    printf '%s\n' \
+      '<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">' \
+      '  <path android:fillColor="#FFFFFF" android:pathData="M20,20h68v68h-68z" />' \
+      '</vector>' \
+      > /tmp/warmup2/app/src/main/res/drawable/ic_foreground.xml && \
+    printf '%s\n' \
+      '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">' \
+      '  <background android:drawable="@color/ic_background" />' \
+      '  <foreground android:drawable="@drawable/ic_foreground" />' \
+      '</adaptive-icon>' \
+      > /tmp/warmup2/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml && \
     printf '%s\n' \
       'package com.warmup.app' \
       'import android.os.Bundle' \
