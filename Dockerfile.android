@@ -175,30 +175,17 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app /tmp/warmup2/app/src/
     true
 
 RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle help --no-daemon --stacktrace
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle :app:processDebugMainManifest --no-daemon --stacktrace
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle :app:compileDebugKotlin --no-daemon --stacktrace
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle :app:processDebugResources --no-daemon --stacktrace
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle :app:dexBuilderDebug --no-daemon --stacktrace
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle :app:packageDebug --no-daemon --stacktrace
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle assembleDebug --no-daemon --stacktrace
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle assembleRelease --no-daemon --stacktrace
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle wrapper --gradle-version 9.6.0 --distribution-type bin --no-daemon && \
-    ./gradlew --version --no-daemon && \
+    { echo "=== help ==="; /opt/gradle-9.6.0/bin/gradle help --no-daemon --stacktrace; \
+      echo "=== manifest ==="; /opt/gradle-9.6.0/bin/gradle :app:processDebugMainManifest --no-daemon --stacktrace; \
+      echo "=== kotlin ==="; /opt/gradle-9.6.0/bin/gradle :app:compileDebugKotlin --no-daemon --stacktrace; \
+      echo "=== resources ==="; /opt/gradle-9.6.0/bin/gradle :app:processDebugResources --no-daemon --stacktrace; \
+      echo "=== dex ==="; /opt/gradle-9.6.0/bin/gradle :app:dexBuilderDebug --no-daemon --stacktrace; \
+      echo "=== package ==="; /opt/gradle-9.6.0/bin/gradle :app:packageDebug --no-daemon --stacktrace; \
+      echo "=== assembleDebug ==="; /opt/gradle-9.6.0/bin/gradle assembleDebug --no-daemon --stacktrace; \
+      echo "=== assembleRelease ==="; /opt/gradle-9.6.0/bin/gradle assembleRelease --no-daemon --stacktrace; \
+      echo "=== wrapper ==="; /opt/gradle-9.6.0/bin/gradle wrapper --gradle-version 9.6.0 --distribution-type bin --no-daemon; \
+      ./gradlew --version --no-daemon; \
+      echo "=== done ==="; } > /tmp/warmup-log.txt 2>&1; \
     rm -rf /tmp/warmup2 /root/.gradle/daemon
+
+RUN mkdir -p /opt/shipsign-debug && cp /tmp/warmup-log.txt /opt/shipsign-debug/warmup-log.txt
