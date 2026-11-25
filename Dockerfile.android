@@ -166,6 +166,15 @@ RUN cd /tmp/warmup2 && \
     /opt/gradle-9.6.0/bin/gradle :app:compileDebugKotlin --no-daemon --stacktrace
 
 RUN cd /tmp/warmup2 && \
+    /opt/gradle-9.6.0/bin/gradle :app:processDebugResources --no-daemon --stacktrace
+
+RUN cd /tmp/warmup2 && \
+    /opt/gradle-9.6.0/bin/gradle :app:dexBuilderDebug --no-daemon --stacktrace
+
+RUN cd /tmp/warmup2 && \
+    /opt/gradle-9.6.0/bin/gradle :app:packageDebug --no-daemon --stacktrace
+
+RUN cd /tmp/warmup2 && \
     /opt/gradle-9.6.0/bin/gradle assembleDebug --no-daemon --stacktrace
 
 RUN cd /tmp/warmup2 && \
