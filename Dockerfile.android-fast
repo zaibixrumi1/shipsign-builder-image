@@ -1,0 +1,166 @@
+FROM ghcr.io/cirruslabs/android-sdk:36
+
+ENV ANDROID_HOME=/opt/android-sdk-linux \
+    ANDROID_SDK_ROOT=/opt/android-sdk-linux \
+    GRADLE_USER_HOME=/root/.gradle \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl unzip zip && \
+    rm -rf /var/lib/apt/lists/*
+
+# SDK platforms for current projects. No NDK/cmake in this fast image:
+# most Kotlin/Compose apps never touch native code, and dropping the NDK
+# (~2 GB) makes every CI container start noticeably faster. The full
+# :android image stays untouched for projects that do need the NDK.
+RUN yes | sdkmanager --licenses > /dev/null 2>&1 || true && \
+    sdkmanager \
+      "platform-tools" \
+      "platforms;android-35" \
+      "platforms;android-36.1" \
+      "build-tools;36.0.0" && \
+    (sdkmanager "platforms;android-37" || \
+     sdkmanager "platforms;android-37.0" || true) && \
+    (sdkmanager "build-tools;37.0.0" || true)
+
+# Gradle 9.6.0: matches the wrapper pin of current projects, so both the
+# installed `gradle` and (via the warmup below) the wrapper distribution
+# are already in the image and never downloaded at build time.
+RUN curl -fsSL https://services.gradle.org/distributions/gradle-9.6.0-bin.zip -o /tmp/g.zip && \
+    unzip -q /tmp/g.zip -d /opt && \
+    rm /tmp/g.zip
+ENV PATH="/opt/gradle-9.6.0/bin:${PATH}"
+
+# Gradle user-home defaults baked into the image.
+RUN mkdir -p /root/.gradle && \
+    printf '%s\n' \
+      'org.gradle.parallel=true' \
+      'org.gradle.caching=true' \
+      'org.gradle.jvmargs=-Xmx4g -XX:+UseParallelGC' \
+      'kotlin.daemon.jvmargs=-Xmx2g' \
+      > /root/.gradle/gradle.properties
+
+# ---------------------------------------------------------------------------
+# Warmup 1 (legacy set): same artifacts the original image pre-fetched, so
+# older projects keep their head start.
+# ---------------------------------------------------------------------------
+RUN mkdir -p /tmp/warmup-legacy && \
+    printf 'rootProject.name = "warmup-legacy"\n' > /tmp/warmup-legacy/settings.gradle && \
+    printf 'plugins { id "java" }\nrepositories { google(); mavenCentral(); gradlePluginPortal() }\ndependencies {\n  implementation platform("androidx.compose:compose-bom:2025.05.00")\n  implementation "androidx.compose.ui:ui"\n  implementation "androidx.compose.material3:material3"\n  implementation "androidx.activity:activity-compose:1.10.1"\n  implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0"\n  implementation "androidx.browser:browser:1.8.0"\n  implementation "androidx.security:security-crypto:1.1.0-alpha06"\n  implementation "com.squareup.okhttp3:okhttp:4.12.0"\n  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"\n  implementation "org.jetbrains.kotlin:kotlin-compiler-embeddable:2.1.21"\n  implementation "com.android.tools.build:apksig:8.10.0"\n  implementation "com.android.tools.build:bundletool:1.18.3"\n}\n' > /tmp/warmup-legacy/build.gradle && \
+    cd /tmp/warmup-legacy && \
+    gradle dependencies --configuration compileClasspath --no-daemon || true
+
+# ---------------------------------------------------------------------------
+# Warmup 2 (current stack): a real (tiny) Android app on AGP 9.5.1 /
+# Kotlin 2.4.21 / Compose BOM 2026.11.01. Running full release + debug
+# builds downloads the whole dependency graph AND pre-does the artifact
+# transforms, so a CI build of a project on this stack starts at the
+# compile step instead of the download step. Also resolves the root
+# plugins such projects commonly apply (spotless, versions, catalog
+# update) and seeds the Gradle 9.6.0 wrapper distribution.
+# ---------------------------------------------------------------------------
+RUN mkdir -p /tmp/warmup/app/src/main/java/com/warmup/app && \
+    printf '%s\n' \
+      'pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }' \
+      'dependencyResolutionManagement { repositories { google(); mavenCentral() } }' \
+      'rootProject.name = "warmup"' \
+      'include ":app"' \
+      > /tmp/warmup/settings.gradle && \
+    printf '%s\n' \
+      'plugins {' \
+      '  id "io.github.ben-manes.versions" version "0.67.0" apply false' \
+      '  id "nl.littlerobots.version-catalog-update" version "1.1.2" apply false' \
+      '  id "com.diffplug.spotless" version "8.11.0" apply false' \
+      '}' \
+      > /tmp/warmup/build.gradle && \
+    printf '%s\n' \
+      'org.gradle.jvmargs=-Xmx2g' \
+      'org.gradle.caching=true' \
+      'org.gradle.parallel=true' \
+      'android.useAndroidX=true' \
+      > /tmp/warmup/gradle.properties && \
+    printf '%s\n' \
+      'plugins {' \
+      '  id "com.android.application" version "9.5.1"' \
+      '  id "org.jetbrains.kotlin.android" version "2.4.21"' \
+      '  id "org.jetbrains.kotlin.plugin.compose" version "2.4.21"' \
+      '  id "org.jetbrains.kotlin.plugin.serialization" version "2.4.21"' \
+      '}' \
+      'android {' \
+      '  namespace "com.warmup.app"' \
+      '  compileSdk 37' \
+      '  defaultConfig {' \
+      '    applicationId "com.warmup.app"' \
+      '    minSdk 24' \
+      '    targetSdk 33' \
+      '    versionCode 1' \
+      '    versionName "1.0"' \
+      '  }' \
+      '  buildFeatures { compose true }' \
+      '  buildTypes { release { minifyEnabled true } }' \
+      '}' \
+      'dependencies {' \
+      '  implementation platform("androidx.compose:compose-bom:2026.11.01")' \
+      '  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0"' \
+      '  implementation "org.jetbrains.kotlinx:kotlinx-serialization-core:1.13.0"' \
+      '  implementation "androidx.compose.animation:animation"' \
+      '  implementation "androidx.compose.foundation:foundation-layout"' \
+      '  implementation "androidx.compose.material3:material3"' \
+      '  implementation "androidx.compose.material3.adaptive:adaptive"' \
+      '  implementation "androidx.compose.material3:material3-window-size-class"' \
+      '  implementation "androidx.compose.runtime:runtime-livedata"' \
+      '  implementation "androidx.compose.ui:ui-tooling-preview"' \
+      '  debugImplementation "androidx.compose.ui:ui-tooling"' \
+      '  debugImplementation "androidx.compose.ui:ui-test-manifest"' \
+      '  implementation "androidx.appcompat:appcompat:1.8.0"' \
+      '  implementation "androidx.activity:activity-ktx:1.13.0"' \
+      '  implementation "androidx.activity:activity-compose:1.13.0"' \
+      '  implementation "androidx.core:core-ktx:1.19.1"' \
+      '  implementation "androidx.glance:glance:1.2.0"' \
+      '  implementation "androidx.glance:glance-appwidget:1.2.0"' \
+      '  implementation "androidx.glance:glance-material3:1.2.0"' \
+      '  implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.1"' \
+      '  implementation "androidx.lifecycle:lifecycle-viewmodel-savedstate:2.11.1"' \
+      '  implementation "androidx.lifecycle:lifecycle-viewmodel-compose:2.11.1"' \
+      '  implementation "androidx.lifecycle:lifecycle-runtime-compose:2.11.1"' \
+      '  implementation "androidx.lifecycle:lifecycle-viewmodel-navigation3:2.11.1"' \
+      '  implementation "androidx.navigation:navigation-compose:2.10.2"' \
+      '  implementation "androidx.navigation3:navigation3-runtime:1.2.2"' \
+      '  implementation "androidx.navigation3:navigation3-ui:1.2.2"' \
+      '  implementation "androidx.window:window:1.5.1"' \
+      '}' \
+      > /tmp/warmup/app/build.gradle && \
+    printf '%s\n' \
+      '<manifest xmlns:android="http://schemas.android.com/apk/res/android">' \
+      '  <application android:label="warmup">' \
+      '    <activity android:name=".MainActivity" android:exported="true">' \
+      '      <intent-filter>' \
+      '        <action android:name="android.intent.action.MAIN" />' \
+      '        <category android:name="android.intent.category.LAUNCHER" />' \
+      '      </intent-filter>' \
+      '    </activity>' \
+      '  </application>' \
+      '</manifest>' \
+      > /tmp/warmup/app/src/main/AndroidManifest.xml && \
+    printf '%s\n' \
+      'package com.warmup.app' \
+      'import android.os.Bundle' \
+      'import androidx.activity.ComponentActivity' \
+      'import androidx.activity.compose.setContent' \
+      'import androidx.compose.material3.Text' \
+      'import androidx.compose.runtime.Composable' \
+      'import kotlinx.serialization.Serializable' \
+      '@Serializable data class Warm(val x: Int = 1)' \
+      'class MainActivity : ComponentActivity() {' \
+      '  override fun onCreate(savedInstanceState: Bundle?) {' \
+      '    super.onCreate(savedInstanceState)' \
+      '    setContent { Greeting() }' \
+      '  }' \
+      '}' \
+      '@Composable fun Greeting() { Text("warm") }' \
+      > /tmp/warmup/app/src/main/java/com/warmup/app/MainActivity.kt && \
+    cd /tmp/warmup && \
+    gradle assembleRelease assembleDebug --no-daemon && \
+    gradle wrapper --gradle-version 9.6.0 --distribution-type bin --no-daemon && \
+    ./gradlew --version --no-daemon && \
+    rm -rf /tmp/warmup /tmp/warmup-legacy /root/.gradle/daemon
