@@ -157,6 +157,15 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app && \
     true
 
 RUN cd /tmp/warmup2 && \
+    /opt/gradle-9.6.0/bin/gradle help --no-daemon --stacktrace
+
+RUN cd /tmp/warmup2 && \
+    /opt/gradle-9.6.0/bin/gradle :app:processDebugMainManifest --no-daemon --stacktrace
+
+RUN cd /tmp/warmup2 && \
+    /opt/gradle-9.6.0/bin/gradle :app:compileDebugKotlin --no-daemon --stacktrace
+
+RUN cd /tmp/warmup2 && \
     /opt/gradle-9.6.0/bin/gradle assembleDebug --no-daemon --stacktrace
 
 RUN cd /tmp/warmup2 && \
