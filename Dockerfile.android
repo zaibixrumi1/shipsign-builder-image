@@ -84,7 +84,7 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app && \
       '}' \
       'android {' \
       '  namespace "com.warmup.app"' \
-      '  compileSdk 37' \
+      '  compileSdk 36' \
       '  defaultConfig {' \
       '    applicationId "com.warmup.app"' \
       '    minSdk 24' \
@@ -155,8 +155,15 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app && \
       '}' \
       '@Composable fun Greeting() { Text("warm") }' \
       > /tmp/warmup2/app/src/main/java/com/warmup/app/MainActivity.kt && \
-    cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle assembleRelease assembleDebug --no-daemon && \
+    true
+
+RUN cd /tmp/warmup2 && \
+    /opt/gradle-9.6.0/bin/gradle assembleDebug --no-daemon --stacktrace
+
+RUN cd /tmp/warmup2 && \
+    /opt/gradle-9.6.0/bin/gradle assembleRelease --no-daemon --stacktrace
+
+RUN cd /tmp/warmup2 && \
     /opt/gradle-9.6.0/bin/gradle wrapper --gradle-version 9.6.0 --distribution-type bin --no-daemon && \
     ./gradlew --version --no-daemon && \
     rm -rf /tmp/warmup2 /root/.gradle/daemon
