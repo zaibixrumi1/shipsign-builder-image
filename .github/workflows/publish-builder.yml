@@ -23,6 +23,8 @@ jobs:
             dockerfile: Dockerfile.android
           - tag: android
             dockerfile: Dockerfile.android
+          - tag: android-fast
+            dockerfile: Dockerfile.android-fast
           - tag: flutter
             dockerfile: Dockerfile.flutter
           - tag: web
