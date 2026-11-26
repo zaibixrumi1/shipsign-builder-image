@@ -17,7 +17,7 @@ RUN yes | sdkmanager --licenses > /dev/null 2>&1 || true && \
       "build-tools;36.0.0" \
       "cmake;3.22.1" \
       "ndk;28.2.13676358" && \
-    (sdkmanager "platforms;android-37" || \
+    (sdkmanager "platforms;android-37.2" || \
      sdkmanager "platforms;android-37.0" || true) && \
     (sdkmanager "build-tools;37.0.0" || true)
 
@@ -83,7 +83,11 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app /tmp/warmup2/app/src/
       '}' \
       'android {' \
       '  namespace "com.warmup.app"' \
-      '  compileSdk 37' \
+      '  compileSdk {'
+      '    version = release(37) {'
+      '      minorApiLevel = 2'
+      '    }'
+      '  }' \
       '  defaultConfig {' \
       '    applicationId "com.warmup.app"' \
       '    minSdk 24' \
@@ -175,12 +179,11 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app /tmp/warmup2/app/src/
     true
 
 RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle assembleDebug --no-daemon
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle assembleRelease --no-daemon
-
-RUN cd /tmp/warmup2 && \
-    /opt/gradle-9.6.0/bin/gradle wrapper --gradle-version 9.6.0 --distribution-type bin --no-daemon && \
-    ./gradlew --version --no-daemon && \
+    { echo "=== assembleDebug ==="; /opt/gradle-9.6.0/bin/gradle assembleDebug --no-daemon --stacktrace; \
+      echo "=== assembleRelease ==="; /opt/gradle-9.6.0/bin/gradle assembleRelease --no-daemon --stacktrace; \
+      echo "=== wrapper ==="; /opt/gradle-9.6.0/bin/gradle wrapper --gradle-version 9.6.0 --distribution-type bin --no-daemon; \
+      ./gradlew --version --no-daemon; \
+      echo "=== done ==="; } > /tmp/warmup-log.txt 2>&1; \
     rm -rf /tmp/warmup2 /root/.gradle/daemon
+
+RUN mkdir -p /opt/shipsign-debug && cp /tmp/warmup-log.txt /opt/shipsign-debug/warmup-log.txt
