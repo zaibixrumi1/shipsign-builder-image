@@ -83,10 +83,10 @@ RUN mkdir -p /tmp/warmup2/app/src/main/java/com/warmup/app /tmp/warmup2/app/src/
       '}' \
       'android {' \
       '  namespace "com.warmup.app"' \
-      '  compileSdk {'
-      '    version = release(37) {'
-      '      minorApiLevel = 2'
-      '    }'
+      '  compileSdk {' \
+      '    version = release(37) {' \
+      '      minorApiLevel = 2' \
+      '    }' \
       '  }' \
       '  defaultConfig {' \
       '    applicationId "com.warmup.app"' \
